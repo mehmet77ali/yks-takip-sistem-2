@@ -111,13 +111,13 @@
     const app = initializeApp(firebaseConfig), auth = getAuth(app), cloud = getFirestore(app);
     const $ = (selector) => document.querySelector(selector);
     const subjects = { TYT: ['Matematik', 'Türkçe', 'Sosyal', 'Fen'], AYT: ['Matematik', 'Fizik', 'Kimya', 'Biyoloji'] };
-    const state = { db: null, user: null, cloudData: { dailyQuestions: 0 }, charts: {}, stopwatch: 0, stopwatchId: null, pomo: { left: 1500, total: 1500, mode: 'focus', id: null }, calculatedNet: null };
+    const state = { db: null, user: null, cloudData: { dailyQuestions: 0 }, charts: {}, stopwatch: 0, stopwatchId: null, pomo: { left: 1500, total: 1500, mode: 'focus', id: null }, calculatedNet: null, diarySeconds: 0 };
     const defaultChips = ['Matematik 10 soru', 'Türkçe 20 soru', 'Geometri 10 soru', 'Fizik 15 soru', 'Kimya 15 soru', 'Biyoloji 15 soru'];
     const storage = { get: (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }, set: (key, value) => localStorage.setItem(key, JSON.stringify(value)) };
 
     function showAuthMessage(message, error = true) { const el = $('#auth-message'); el.textContent = message; el.className = `mt-4 rounded-lg p-3 text-sm ${error ? 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-200' : 'bg-emerald-50 text-emerald-700'}`; }
     function friendlyError(error) { const code = error?.code || ''; if (code.includes('invalid-credential') || code.includes('wrong-password')) return 'E-posta veya şifre hatalı.'; if (code.includes('email-already-in-use')) return 'Bu e-posta zaten kayıtlı.'; if (code.includes('weak-password')) return 'Şifre en az 6 karakter olmalı.'; return 'İşlem tamamlanamadı. İnternet bağlantını ve bilgileri kontrol et.'; }
-    // Günlük sayaç, ilk kodda yazdığı gibi her gün Türkiye saatiyle 04:00'te yenilenir.
+    
     function dayKey() {
       const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
       const value = Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
@@ -127,7 +127,15 @@
     function formatTime(seconds) { const h = Math.floor(seconds / 3600), m = Math.floor(seconds % 3600 / 60), s = seconds % 60; return h ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; }
     function totalFocusSeconds() { return Number(localStorage.getItem('sk-focus-seconds') || 0); }
     function addFocus(seconds) { if (seconds > 0) localStorage.setItem('sk-focus-seconds', String(totalFocusSeconds() + seconds)); updateHeader(); }
-    function updateHeader() { const count = state.cloudData.dailyQuestions || 0; $('#header-questions').textContent = count; const sec = totalFocusSeconds() + state.stopwatch; const min = Math.floor(sec / 60); $('#header-time').textContent = min >= 60 ? `${Math.floor(min / 60)} sa ${min % 60} dk` : `${min} dk`; }
+    
+    function updateHeader() { 
+      const count = state.cloudData.dailyQuestions || 0; 
+      $('#header-questions').textContent = count; 
+      const sec = totalFocusSeconds() + state.stopwatch + (state.diarySeconds || 0); 
+      const min = Math.floor(sec / 60); 
+      $('#header-time').textContent = min >= 60 ? `${Math.floor(min / 60)} sa ${min % 60} dk` : `${min} dk`; 
+    }
+    
     function setPage(page) { document.querySelectorAll('main > section').forEach((section) => section.classList.add('hidden')); $(`#${page}-page`).classList.remove('hidden'); if (page === 'questions') loadQuestions(); if (page === 'leaderboard') loadLeaderboard(); if (page === 'dashboard') { renderCharts(); analyzeDiary(); } window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
     function openDatabase() { return new Promise((resolve, reject) => { const req = indexedDB.open('SoruKutusuDB', 1); req.onupgradeneeded = () => { const db = req.result; if (!db.objectStoreNames.contains('questions')) db.createObjectStore('questions', { keyPath: 'id', autoIncrement: true }); if (!db.objectStoreNames.contains('nets')) db.createObjectStore('nets', { keyPath: 'id', autoIncrement: true }); }; req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); }
@@ -139,7 +147,52 @@
 
     function chips() { return storage.get('sk-chips', defaultChips); }
     function renderChips() { $('#quick-chips').innerHTML = ''; chips().forEach((chip) => { const button = document.createElement('button'); button.className = 'rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-200'; button.textContent = `＋ ${chip}`; button.onclick = () => { const diary = $('#diary'); diary.value = `${diary.value.trim()}${diary.value.trim() ? ', ' : ''}${chip}`; analyzeDiary(); diary.focus(); }; $('#quick-chips').append(button); }); }
-    function analyzeDiary() { const text = $('#diary').value; localStorage.setItem('sk-diary', text); const summary = {}; let total = 0; const regex = /([a-zçğıöşü]+)\s*(?:den)?\s*(\d+)\s*soru/gi; let match; while ((match = regex.exec(text))) { const subject = match[1].charAt(0).toLocaleUpperCase('tr-TR') + match[1].slice(1).toLocaleLowerCase('tr-TR'); const amount = Number(match[2]); summary[subject] = (summary[subject] || 0) + amount; total += amount; } const tbody = $('#diary-table'); tbody.innerHTML = ''; const entries = Object.entries(summary); if (!entries.length) tbody.innerHTML = '<tr><td colspan="2" class="px-4 py-5 text-center text-slate-400">Soru sayıları burada görünecek.</td></tr>'; else { entries.forEach(([subject, amount]) => { const row = document.createElement('tr'); row.className = 'border-t border-slate-100 dark:border-slate-800'; row.innerHTML = `<td class="px-4 py-3"></td><td class="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">${amount}</td>`; row.children[0].textContent = subject; tbody.append(row); }); const row = document.createElement('tr'); row.className = 'border-t-2 border-indigo-100 dark:border-indigo-950 font-black'; row.innerHTML = `<td class="px-4 py-3">Toplam</td><td class="px-4 py-3 text-right text-indigo-600 dark:text-indigo-400">${total}</td>`; tbody.append(row); } const saved = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0), pending = Math.max(0, total - saved); $('#sync-status').textContent = pending ? `${pending} soru buluta kaydedilmeyi bekliyor.` : 'Buluta gönderilecek yeni soru yok.'; return total; }
+    
+    function analyzeDiary() { 
+      const text = $('#diary').value; 
+      localStorage.setItem('sk-diary', text); 
+      const summary = {}; 
+      let total = 0; 
+      const regex = /([a-zçğıöşü]+)\s*(?:den)?\s*(\d+)\s*soru/gi; 
+      let match; 
+      while ((match = regex.exec(text))) { 
+        const subject = match[1].charAt(0).toLocaleUpperCase('tr-TR') + match[1].slice(1).toLocaleLowerCase('tr-TR'); 
+        const amount = Number(match[2]); 
+        summary[subject] = (summary[subject] || 0) + amount; 
+        total += amount; 
+      } 
+      
+      let diarySeconds = 0; 
+      const hourRegex = /(\d+)\s*(?:saat|sa\b)/gi; 
+      let hourMatch; 
+      while ((hourMatch = hourRegex.exec(text))) { diarySeconds += Number(hourMatch[1]) * 3600; } 
+      const minRegex = /(\d+)\s*(?:dakika|dk\b)/gi; 
+      let minMatch; 
+      while ((minMatch = minRegex.exec(text))) { diarySeconds += Number(minMatch[1]) * 60; } 
+      state.diarySeconds = diarySeconds; 
+
+      const tbody = $('#diary-table'); 
+      tbody.innerHTML = ''; 
+      const entries = Object.entries(summary); 
+      if (!entries.length) tbody.innerHTML = '<tr><td colspan="2" class="px-4 py-5 text-center text-slate-400">Soru sayıları burada görünecek.</td></tr>'; 
+      else { 
+        entries.forEach(([subject, amount]) => { 
+          const row = document.createElement('tr'); 
+          row.className = 'border-t border-slate-100 dark:border-slate-800'; 
+          row.innerHTML = `<td class="px-4 py-3"></td><td class="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">${amount}</td>`; 
+          row.children[0].textContent = subject; 
+          tbody.append(row); 
+        }); 
+        const row = document.createElement('tr'); 
+        row.className = 'border-t-2 border-indigo-100 dark:border-indigo-950 font-black'; 
+        row.innerHTML = `<td class="px-4 py-3">Toplam</td><td class="px-4 py-3 text-right text-indigo-600 dark:text-indigo-400">${total}</td>`; 
+        tbody.append(row); 
+      } 
+      const saved = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0), pending = Math.max(0, total - saved); 
+      $('#sync-status').textContent = pending ? `${pending} soru buluta kaydedilmeyi bekliyor.` : 'Buluta gönderilecek yeni soru yok.'; 
+      updateHeader(); 
+      return total; 
+    }
 
     function populateSubjects(target, exam) { target.innerHTML = ''; subjects[exam].forEach((subject) => { const opt = document.createElement('option'); opt.value = subject; opt.textContent = subject; target.append(opt); }); }
     function fileAsDataUrl(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
