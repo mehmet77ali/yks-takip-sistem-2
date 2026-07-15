@@ -227,4 +227,4 @@
     onAuthStateChanged(auth, async (user) => { if (!user) { window.location.replace('./index.html'); return; } state.user = user; try { await ensureCloudProfile(user); $('#auth-section').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#app').classList.add('flex'); setPage('dashboard'); } catch { alert('Profil yüklenemedi. Lütfen yeniden giriş yap.'); await signOut(auth); } });
   </script>
 </body>
-</html>
+</html> 
