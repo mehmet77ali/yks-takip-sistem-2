@@ -47,6 +47,7 @@
           <span title="Toplam odaklanma süresi">⏱️ <b id="header-time">0 dk</b></span>
         </div>
         <div class="flex items-center gap-2">
+          <button data-page="diary" class="icon-btn" title="Çalışma Günlüğü">📝</button>
           <button data-page="leaderboard" class="icon-btn" title="Sıralama">🏆</button>
           <button data-page="settings" class="icon-btn" title="Ayarlar">⚙️</button>
           <button id="logout-button" class="rounded-lg bg-white/15 px-3 py-2 text-xs font-bold hover:bg-white/25">Çıkış</button>
@@ -55,37 +56,89 @@
     </header>
 
     <main class="mx-auto w-full max-w-6xl flex-1 p-4 md:p-6">
+      
       <section id="dashboard-page" class="space-y-6">
         <div class="rounded-3xl bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white shadow-lg">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div><p class="text-indigo-100">Hoş geldin,</p><h2 class="text-2xl font-black"><span id="display-name">Öğrenci</span> 👋</h2><p class="mt-1 text-sm text-indigo-100">Günlük ilerlemeni takip et, çalışmanı buluta kaydet.</p></div>
-            <div class="flex gap-2"><button data-page="add-question" class="rounded-xl bg-white px-4 py-3 text-sm font-bold text-indigo-700 shadow hover:bg-indigo-50">＋ Soru ekle</button><button id="sync-button" class="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-bold text-emerald-950 shadow hover:bg-emerald-300">☁️ Kaydet</button></div>
+            <div class="flex gap-2">
+              <button data-page="diary" class="rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-white shadow hover:bg-amber-600">📝 Günlüğü Aç</button>
+              <button data-page="add-question" class="rounded-xl bg-white px-4 py-3 text-sm font-bold text-indigo-700 shadow hover:bg-indigo-50">＋ Soru ekle</button>
+              <button id="sync-button" class="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-bold text-emerald-950 shadow hover:bg-emerald-300">☁️ Kaydet</button>
+            </div>
           </div>
-          <p id="sync-status" class="mt-4 text-xs text-indigo-100">Buluta gönderilecek yeni soru yok.</p>
+          <p id="sync-status" class="mt-4 text-xs text-indigo-100">Buluta gönderilecek yeni veri yok.</p>
         </div>
 
         <div class="grid gap-6 lg:grid-cols-3">
-          <section class="card lg:col-span-2">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="section-title">📝 Çalışma günlüğüm</h3><p class="hint">Örnek: “Matematik 30 soru, Türkçe 20 soru, 1 saat 15 dk çalıştım.”</p></div><button id="clear-diary" class="danger-link">Temizle</button></div>
-            <div id="quick-chips" class="mb-3 flex flex-wrap gap-2"></div>
-            <textarea id="diary" class="field h-36 resize-y" placeholder="Bugünkü çalışmanı yaz..."></textarea>
-            <div class="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700"><table class="w-full text-left text-sm"><thead class="bg-slate-100 text-xs uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400"><tr><th class="px-4 py-3">Ders</th><th class="px-4 py-3 text-right">Soru</th></tr></thead><tbody id="diary-table"></tbody></table></div>
-          </section>
-
-          <section class="card flex flex-col">
+          <section class="card lg:col-span-1 flex flex-col">
             <h3 class="section-title">⏱️ Odak zamanlayıcısı</h3>
             <div class="mt-3 flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800"><button data-timer-tab="stopwatch" class="timer-tab active">Kronometre</button><button data-timer-tab="pomodoro" class="timer-tab">Pomodoro</button></div>
             <div id="stopwatch-panel" class="flex flex-1 flex-col justify-center"><p id="stopwatch-display" class="my-7 text-center font-mono text-4xl font-black text-indigo-600 dark:text-indigo-400">00:00:00</p><button id="stopwatch-toggle" class="primary-btn">▶ Başlat</button><button id="stopwatch-save" class="secondary-btn mt-2">Süreyi ekle ve sıfırla</button></div>
             <div id="pomodoro-panel" class="hidden flex-1"><div class="mt-6 text-center"><span id="pomo-label" class="rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-700 dark:bg-rose-950 dark:text-rose-200">Odaklanma · 25 dk</span><p id="pomo-display" class="my-6 font-mono text-4xl font-black text-indigo-600 dark:text-indigo-400">25:00</p></div><div class="grid grid-cols-3 gap-2"><button class="small-btn" data-pomo="25,focus">25 dk</button><button class="small-btn" data-pomo="5,break">5 dk</button><button class="small-btn" data-pomo="15,break">15 dk</button></div><button id="pomo-toggle" class="primary-btn mt-4">▶ Başlat</button><button id="pomo-reset" class="secondary-btn mt-2">Sıfırla</button></div>
           </section>
+
+          <section class="card lg:col-span-2"><h3 class="section-title">🤖 Net hesapla</h3><div class="mt-4 grid gap-3"><select id="net-exam" class="field"><option>TYT</option><option>AYT</option></select><input id="net-label" class="field" placeholder="Deneme adı (opsiyonel)" /><div class="grid grid-cols-2 gap-3"><input id="net-correct" type="number" min="0" class="field" placeholder="Doğru" /><input id="net-wrong" type="number" min="0" class="field" placeholder="Yanlış" /></div><button id="calculate-net" class="primary-btn">Hesapla</button><p id="net-result" class="hidden rounded-xl bg-indigo-50 p-3 text-center font-bold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-200"></p><button id="save-net" class="secondary-btn hidden">Grafiğe kaydet</button></div></section>
         </div>
 
         <div class="grid gap-6 lg:grid-cols-3">
-          <section class="card lg:col-span-1"><h3 class="section-title">🤖 Net hesapla</h3><div class="mt-4 grid gap-3"><select id="net-exam" class="field"><option>TYT</option><option>AYT</option></select><input id="net-label" class="field" placeholder="Deneme adı (opsiyonel)" /><div class="grid grid-cols-2 gap-3"><input id="net-correct" type="number" min="0" class="field" placeholder="Doğru" /><input id="net-wrong" type="number" min="0" class="field" placeholder="Yanlış" /></div><button id="calculate-net" class="primary-btn">Hesapla</button><p id="net-result" class="hidden rounded-xl bg-indigo-50 p-3 text-center font-bold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-200"></p><button id="save-net" class="secondary-btn hidden">Grafiğe kaydet</button></div></section>
-          <section class="card lg:col-span-2"><div class="grid gap-6 md:grid-cols-2"><div><div class="mb-2 flex justify-between"><h3 class="font-bold">📈 TYT net gelişimi</h3><button data-clear-nets="TYT" class="danger-link">Sıfırla</button></div><div class="h-60"><canvas id="tyt-chart"></canvas></div></div><div><div class="mb-2 flex justify-between"><h3 class="font-bold">📈 AYT net gelişimi</h3><button data-clear-nets="AYT" class="danger-link">Sıfırla</button></div><div class="h-60"><canvas id="ayt-chart"></canvas></div></div></div></section>
+          <section class="card lg:col-span-3"><div class="grid gap-6 md:grid-cols-2"><div><div class="mb-2 flex justify-between"><h3 class="font-bold">📈 TYT net gelişimi</h3><button data-clear-nets="TYT" class="danger-link">Sıfırla</button></div><div class="h-60"><canvas id="tyt-chart"></canvas></div></div><div><div class="mb-2 flex justify-between"><h3 class="font-bold">📈 AYT net gelişimi</h3><button data-clear-nets="AYT" class="danger-link">Sıfırla</button></div><div class="h-60"><canvas id="ayt-chart"></canvas></div></div></div></section>
         </div>
 
         <section class="card"><div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="section-title">🗂️ Soru arşivi</h3><p class="hint">Fotoğraflı sorularını cihazında sakla ve dersine göre filtrele.</p></div><button data-page="questions" class="primary-btn">Arşivi aç</button></div></section>
+      </section>
+
+      <section id="diary-page" class="hidden space-y-5">
+        <div class="page-heading">
+          <div>
+            <h2>📝 Çalışma Günlüğüm</h2>
+            <p>Bugün çözdüğün soruları ve süreleri yazarak raporunu incele.</p>
+          </div>
+          <div class="flex gap-2">
+            <button data-page="dashboard" class="secondary-btn">← Ana sayfa</button>
+            <button id="sync-button-diary" class="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-bold text-emerald-950 shadow hover:bg-emerald-300">☁️ Kaydet</button>
+          </div>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-3">
+          <div class="card lg:col-span-2">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 class="section-title">✍️ Bugün Ne Çalıştın?</h3>
+                <p class="hint">Örnek: “Matematik 30 soru, Türkçe 20 soru, 1 saat 15 dk çalıştım.”</p>
+              </div>
+              <button id="clear-diary" class="danger-link">Temizle</button>
+            </div>
+            <div id="quick-chips" class="mb-3 flex flex-wrap gap-2"></div>
+            <textarea id="diary" class="field h-44 resize-y" placeholder="Bugünkü çalışmanı yaz..."></textarea>
+          </div>
+
+          <div class="card lg:col-span-1 flex flex-col justify-between">
+            <div>
+              <h3 class="section-title">📊 Metin Analiz Raporu</h3>
+              <div class="mt-3 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                <table class="w-full text-left text-sm">
+                  <thead class="bg-slate-100 text-xs uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    <tr><th class="px-4 py-3">Ders / Veri</th><th class="px-4 py-3 text-right">Miktar</th></tr>
+                  </thead>
+                  <tbody id="diary-table"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2 text-xs">
+              <div class="flex justify-between">
+                <span class="text-slate-500 font-medium">📅 Bugün Buluta Kaydedilen:</span>
+                <span class="font-bold text-indigo-600 dark:text-indigo-400"><b id="diary-stat-daily">0</b> soru</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-500 font-medium">👑 Tüm Zamanlar Toplamı:</span>
+                <span class="font-bold text-violet-600 dark:text-violet-400"><b id="diary-stat-total">0</b> soru</span>
+              </div>
+              <p id="sync-status-diary" class="text-[11px] text-slate-400 mt-2 text-center"></p>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section id="questions-page" class="hidden space-y-5"><div class="page-heading"><div><h2>Soru arşivi</h2><p>Sorular yalnızca bu tarayıcıda saklanır.</p></div><button data-page="add-question" class="primary-btn">＋ Soru ekle</button></div><div class="flex flex-wrap gap-2"><select id="filter-exam" class="field w-auto"><option value="">Tüm sınavlar</option><option>TYT</option><option>AYT</option></select><select id="filter-subject" class="field w-auto"><option value="">Tüm dersler</option></select></div><div id="question-list" class="grid gap-5 md:grid-cols-2"></div></section>
@@ -93,39 +146,15 @@
       <section id="add-question-page" class="hidden space-y-5"><div class="page-heading"><div><h2>Yeni soru ekle</h2><p>Soru ve çözüm fotoğrafı cihazında saklanır.</p></div><button data-page="questions" class="secondary-btn">← Arşive dön</button></div><form id="question-form" class="card mx-auto max-w-2xl space-y-4"><select id="question-exam" class="field"><option>TYT</option><option>AYT</option></select><select id="question-subject" class="field"></select><input id="question-title" required class="field" placeholder="Soru başlığı / konu" /><label class="block text-sm font-bold">Soru fotoğrafı<input id="question-image" required type="file" accept="image/*" class="mt-1 block w-full text-sm" /></label><label class="block text-sm font-bold">Çözüm fotoğrafı<input id="solution-image" required type="file" accept="image/*" class="mt-1 block w-full text-sm" /></label><button class="primary-btn w-full" type="submit">Kaydet ve arşive ekle</button></form></section>
 
       <section id="leaderboard-page" class="hidden space-y-5">
-        <div class="page-heading">
-          <div>
-            <h2>🏆 Liderlik Tablosu</h2>
-            <p>Çalışmalarını buluta kaydeden öğrencilerin sıralaması.</p>
-          </div>
-          <button data-page="dashboard" class="secondary-btn">← Ana sayfa</button>
-        </div>
-        
+        <div class="page-heading"><div><h2>🏆 Liderlik Tablosu</h2><p>Çalışmalarını buluta kaydeden öğrencilerin sıralaması.</p></div><button data-page="dashboard" class="secondary-btn">← Ana sayfa</button></div>
         <div class="grid gap-6 md:grid-cols-2">
           <div class="card overflow-hidden p-0">
-            <div class="p-4 bg-indigo-50 dark:bg-indigo-950/40 border-b border-slate-100 dark:border-slate-800">
-              <h3 class="font-bold text-indigo-600 dark:text-indigo-400">⚡ Bugün En Çok Çözenler</h3>
-              <p class="text-xs text-slate-500">Her sabah saat 04:00'te sıfırlanır.</p>
-            </div>
-            <table class="w-full text-left">
-              <thead class="bg-slate-100 text-xs uppercase text-slate-500 dark:bg-slate-800">
-                <tr><th class="px-5 py-4">#</th><th class="px-5 py-4">Öğrenci</th><th class="px-5 py-4 text-right">Soru</th></tr>
-              </thead>
-              <tbody id="leaderboard-list-daily"></tbody>
-            </table>
+            <div class="p-4 bg-indigo-50 dark:bg-indigo-950/40 border-b border-slate-100 dark:border-slate-800"><h3 class="font-bold text-indigo-600 dark:text-indigo-400">⚡ Bugün En Çok Çözenler</h3><p class="text-xs text-slate-500">Her sabah saat 04:00'te sıfırlanır.</p></div>
+            <table class="w-full text-left"><thead class="bg-slate-100 text-xs uppercase text-slate-500 dark:bg-slate-800"><tr><th class="px-5 py-4">#</th><th class="px-5 py-4">Öğrenci</th><th class="px-5 py-4 text-right">Soru</th></tr></thead><tbody id="leaderboard-list-daily"></tbody></table>
           </div>
-
           <div class="card overflow-hidden p-0">
-            <div class="p-4 bg-violet-50 dark:bg-violet-950/40 border-b border-slate-100 dark:border-slate-800">
-              <h3 class="font-bold text-violet-600 dark:text-violet-400">👑 Tüm Zamanların En İyileri</h3>
-              <p class="text-xs text-slate-500">Şu ana kadar çözülen toplam soru sayısı.</p>
-            </div>
-            <table class="w-full text-left">
-              <thead class="bg-slate-100 text-xs uppercase text-slate-500 dark:bg-slate-800">
-                <tr><th class="px-5 py-4">#</th><th class="px-5 py-4">Öğrenci</th><th class="px-5 py-4 text-right">Toplam Soru</th></tr>
-              </thead>
-              <tbody id="leaderboard-list-total"></tbody>
-            </table>
+            <div class="p-4 bg-violet-50 dark:bg-violet-950/40 border-b border-slate-100 dark:border-slate-800"><h3 class="font-bold text-violet-600 dark:text-violet-400">👑 Tüm Zamanların En İyileri</h3><p class="text-xs text-slate-500">Şu ana kadar çözülen toplam soru sayısı.</p></div>
+            <table class="w-full text-left"><thead class="bg-slate-100 text-xs uppercase text-slate-500 dark:bg-slate-800"><tr><th class="px-5 py-4">#</th><th class="px-5 py-4">Öğrenci</th><th class="px-5 py-4 text-right">Toplam Soru</th></tr></thead><tbody id="leaderboard-list-total"></tbody></table>
           </div>
         </div>
       </section>
@@ -164,12 +193,17 @@
     function totalFocusSeconds() { return Number(localStorage.getItem('sk-focus-seconds') || 0); }
     function addFocus(seconds) { if (seconds > 0) localStorage.setItem('sk-focus-seconds', String(totalFocusSeconds() + seconds)); updateHeader(); }
     function updateHeader() { const count = state.cloudData.dailyQuestions || 0; $('#header-questions').textContent = count; const sec = totalFocusSeconds() + state.stopwatch; const min = Math.floor(sec / 60); $('#header-time').textContent = min >= 60 ? `${Math.floor(min / 60)} sa ${min % 60} dk` : `${min} dk`; }
-    function setPage(page) { document.querySelectorAll('main > section').forEach((section) => section.classList.add('hidden')); $(`#${page}-page`).classList.remove('hidden'); if (page === 'questions') loadQuestions(); if (page === 'leaderboard') loadLeaderboard(); if (page === 'dashboard') { renderCharts(); analyzeDiary(); } window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    
+    function updateDiaryStats() {
+      if ($('#diary-stat-daily')) $('#diary-stat-daily').textContent = state.cloudData.dailyQuestions || 0;
+      if ($('#diary-stat-total')) $('#diary-stat-total').textContent = state.cloudData.totalQuestions || 0;
+    }
+
+    function setPage(page) { document.querySelectorAll('main > section').forEach((section) => section.classList.add('hidden')); $(`#${page}-page`).classList.remove('hidden'); if (page === 'questions') loadQuestions(); if (page === 'leaderboard') loadLeaderboard(); if (page === 'dashboard' || page === 'diary') { renderCharts(); analyzeDiary(); } window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
     function openDatabase() { return new Promise((resolve, reject) => { const req = indexedDB.open('SoruKutusuDB', 1); req.onupgradeneeded = () => { const db = req.result; if (!db.objectStoreNames.contains('questions')) db.createObjectStore('questions', { keyPath: 'id', autoIncrement: true }); if (!db.objectStoreNames.contains('nets')) db.createObjectStore('nets', { keyPath: 'id', autoIncrement: true }); }; req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); }
     function dbRequest(store, mode, operation) { return new Promise((resolve, reject) => { const tx = state.db.transaction(store, mode), request = operation(tx.objectStore(store)); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
 
-    // GÜNCELLENEN BULUT PROFİL KONTROLÜ (totalQuestions eklendi)
     async function ensureCloudProfile(user) { 
       const ref = doc(cloud, 'users', user.uid), snap = await getDoc(ref), name = user.displayName || user.email.split('@')[0]; 
       let data = snap.exists() ? snap.data() : null; 
@@ -184,86 +218,165 @@
           data.dailyQuestions = 0; 
           data.dayKey = dayKey(); 
         } 
-        if (data.totalQuestions === undefined) {
-          updates.totalQuestions = 0;
-          data.totalQuestions = 0;
-        }
-        if (Object.keys(updates).length > 0) {
-          await updateDoc(ref, updates);
-        }
+        if (data.totalQuestions === undefined) { updates.totalQuestions = 0; data.totalQuestions = 0; }
+        if (Object.keys(updates).length > 0) await updateDoc(ref, updates);
       }
       state.cloudData = data; 
       $('#display-name').textContent = data.username || name; 
-      updateHeader(); 
+      updateHeader();
+      updateDiaryStats();
     }
 
-    // GÜNCELLENEN BULUT SENKRONİZASYONU (totalQuestions increment ediliyor)
+    // GÜNCELLENEN GÜNLÜK ANALİZ (Saat/Dakika Yakalama Desteği)
+    function analyzeDiary() { 
+      const text = $('#diary').value; 
+      localStorage.setItem('sk-diary', text); 
+      const summary = {}; 
+      let totalQuestions = 0; 
+
+      // 1. Soru Sayılarını Yakala
+      const regex = /([a-zçğıöşü]+)\s*(?:den)?\s*(\d+)\s*soru/gi; 
+      let match; 
+      while ((match = regex.exec(text))) { 
+        const subject = match[1].charAt(0).toLocaleUpperCase('tr-TR') + match[1].slice(1).toLocaleLowerCase('tr-TR'); 
+        const amount = Number(match[2]); 
+        summary[subject] = (summary[subject] || 0) + amount; 
+        totalQuestions += amount; 
+      } 
+
+      // 2. Çalışma Süresini Yakala (Saat ve Dakika)
+      let diaryHours = 0, diaryMinutes = 0;
+      const hourRegex = /(\d+)\s*(?:saat|sa\b)/gi;
+      let hourMatch;
+      while ((hourMatch = hourRegex.exec(text))) { diaryHours += Number(hourMatch[1]); }
+      
+      const minRegex = /(\d+)\s*(?:dakika|dk\b)/gi;
+      let minMatch;
+      while ((minMatch = minRegex.exec(text))) { diaryMinutes += Number(minMatch[1]); }
+      
+      const totalDiarySeconds = (diaryHours * 3600) + (diaryMinutes * 60);
+
+      // 3. Tabloyu Oluştur ve Ekrana Bas
+      const tbody = $('#diary-table'); 
+      tbody.innerHTML = ''; 
+      const entries = Object.entries(summary); 
+      
+      if (!entries.length && totalDiarySeconds === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" class="px-4 py-5 text-center text-slate-400">Soru ve süre tespit edilemedi.</td></tr>'; 
+      } else { 
+        entries.forEach(([subject, amount]) => { 
+          const row = document.createElement('tr'); 
+          row.className = 'border-t border-slate-100 dark:border-slate-800'; 
+          row.innerHTML = `<td class="px-4 py-3"></td><td class="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">${amount}</td>`; 
+          row.children[0].textContent = subject; 
+          tbody.append(row); 
+        }); 
+
+        if (totalDiarySeconds > 0) {
+          const timeRow = document.createElement('tr');
+          timeRow.className = 'border-t border-slate-100 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-bold';
+          timeRow.innerHTML = `<td class="px-4 py-3">⏳ Çalışma Süresi</td><td class="px-4 py-3 text-right">${diaryHours > 0 ? diaryHours + ' sa ' : ''}${diaryMinutes} dk</td>`;
+          tbody.append(timeRow);
+        }
+
+        const row = document.createElement('tr'); 
+        row.className = 'border-t-2 border-indigo-100 dark:border-indigo-950 font-black'; 
+        row.innerHTML = `<td class="px-4 py-3">Toplam Soru</td><td class="px-4 py-3 text-right text-indigo-600 dark:text-indigo-400">${totalQuestions}</td>`; 
+        tbody.append(row); 
+      } 
+
+      const savedQuestions = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0); 
+      const pendingQuestions = Math.max(0, totalQuestions - savedQuestions); 
+      
+      const savedTime = Number(localStorage.getItem(`sk-diary-time-saved-${dayKey()}`) || 0);
+      const pendingTime = Math.max(0, totalDiarySeconds - savedTime);
+
+      const statusMsg = (pendingQuestions || pendingTime) 
+        ? `${pendingQuestions} yeni soru ve ${Math.floor(pendingTime / 60)} dk buluta gönderilmeyi bekliyor.` 
+        : 'Buluta gönderilecek yeni veri yok.'; 
+        
+      if ($('#sync-status')) $('#sync-status').textContent = statusMsg;
+      if ($('#sync-status-diary')) $('#sync-status-diary').textContent = statusMsg;
+
+      updateDiaryStats();
+      return { totalQuestions, totalDiarySeconds }; 
+    }
+
+    // GÜNCELLENEN BULUT KAYIT SİSTEMİ (Hem Soru Hem Süre Senkronize Edilir)
     async function syncQuestions() { 
       if (!state.user) return; 
-      const total = analyzeDiary(); 
-      const saved = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0); 
-      const pending = Math.max(0, total - saved); 
-      if (!pending) { $('#sync-status').textContent = 'Buluta gönderilecek yeni soru yok.'; return; } 
-      $('#sync-button').disabled = true; 
-      $('#sync-button').textContent = 'Kaydediliyor…'; 
+      const { totalQuestions, totalDiarySeconds } = analyzeDiary(); 
+      
+      const savedQuestions = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0); 
+      const pendingQuestions = Math.max(0, totalQuestions - savedQuestions); 
+
+      const savedTime = Number(localStorage.getItem(`sk-diary-time-saved-${dayKey()}`) || 0);
+      const pendingTime = Math.max(0, totalDiarySeconds - savedTime);
+
+      if (!pendingQuestions && !pendingTime) { 
+        const noDataMsg = 'Buluta gönderilecek yeni veri yok.';
+        if ($('#sync-status')) $('#sync-status').textContent = noDataMsg;
+        if ($('#sync-status-diary')) $('#sync-status-diary').textContent = noDataMsg;
+        return; 
+      } 
+      
+      const syncButtons = document.querySelectorAll('#sync-button, #sync-button-diary');
+      syncButtons.forEach(btn => { btn.disabled = true; btn.textContent = 'Kaydediliyor…'; });
+
       try { 
-        await updateDoc(doc(cloud, 'users', state.user.uid), { 
-          dailyQuestions: increment(pending), 
-          totalQuestions: increment(pending),
-          dayKey: dayKey() 
-        }); 
-        state.cloudData.dailyQuestions = (state.cloudData.dailyQuestions || 0) + pending; 
-        state.cloudData.totalQuestions = (state.cloudData.totalQuestions || 0) + pending; 
-        localStorage.setItem(`sk-diary-saved-${dayKey()}`, String(total)); 
+        if (pendingQuestions > 0) {
+          await updateDoc(doc(cloud, 'users', state.user.uid), { 
+            dailyQuestions: increment(pendingQuestions), 
+            totalQuestions: increment(pendingQuestions),
+            dayKey: dayKey() 
+          }); 
+          state.cloudData.dailyQuestions = (state.cloudData.dailyQuestions || 0) + pendingQuestions; 
+          state.cloudData.totalQuestions = (state.cloudData.totalQuestions || 0) + pendingQuestions; 
+          localStorage.setItem(`sk-diary-saved-${dayKey()}`, String(totalQuestions)); 
+        }
+
+        if (pendingTime > 0) {
+          addFocus(pendingTime);
+          localStorage.setItem(`sk-diary-time-saved-${dayKey()}`, String(totalDiarySeconds));
+        }
+
         updateHeader(); 
-        $('#sync-status').textContent = `${pending} yeni soru buluta kaydedildi. 🎉`; 
+        const successMsg = `Tebrikler! Verilerin başarıyla buluta işlendi. 🎉`;
+        if ($('#sync-status')) $('#sync-status').textContent = successMsg;
+        if ($('#sync-status-diary')) $('#sync-status-diary').textContent = successMsg;
       } catch (error) { 
-        $('#sync-status').textContent = 'Bulut kaydı başarısız. Bağlantını kontrol edip tekrar dene.'; 
+        const failMsg = 'Bulut kaydı başarısız. Bağlantını kontrol edip tekrar dene.';
+        if ($('#sync-status')) $('#sync-status').textContent = failMsg;
+        if ($('#sync-status-diary')) $('#sync-status-diary').textContent = failMsg;
       } finally { 
-        $('#sync-button').disabled = false; 
-        $('#sync-button').textContent = '☁️ Kaydet'; 
+        syncButtons.forEach(btn => { btn.disabled = false; btn.textContent = '☁️ Kaydet'; });
+        updateDiaryStats();
       } 
     }
 
-    // GÜNCELLENEN ÇİFT LİSTELİ LİDERLİK TABLOSU YÜKLEMESİ
     async function loadLeaderboard() { 
-      const dailyBody = $('#leaderboard-list-daily'); 
-      const totalBody = $('#leaderboard-list-total'); 
+      const dailyBody = $('#leaderboard-list-daily'), totalBody = $('#leaderboard-list-total'); 
       dailyBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Yükleniyor…</td></tr>'; 
       totalBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Yükleniyor…</td></tr>'; 
-      
       try { 
-        // 1. Günlük Sıralama Sorgusu
         const dailySnap = await getDocs(query(collection(cloud, 'users'), orderBy('dailyQuestions', 'desc'), limit(20))); 
-        dailyBody.innerHTML = ''; 
-        let dailyRank = 0; 
+        dailyBody.innerHTML = ''; let dailyRank = 0; 
         dailySnap.forEach((item) => { 
-          dailyRank++; 
-          const data = item.data(); 
-          const row = document.createElement('tr'); 
-          row.className = 'border-t border-slate-100 dark:border-slate-800'; 
+          dailyRank++; const data = item.data(); const row = document.createElement('tr'); row.className = 'border-t border-slate-100 dark:border-slate-800'; 
           row.innerHTML = `<td class="px-5 py-4 font-bold text-slate-400">${dailyRank}</td><td class="px-5 py-4 font-semibold"></td><td class="px-5 py-4 text-right font-black text-indigo-600 dark:text-indigo-400">${data.dailyQuestions || 0}</td>`; 
-          row.children[1].textContent = data.username || 'Öğrenci'; 
-          dailyBody.append(row); 
+          row.children[1].textContent = data.username || 'Öğrenci'; dailyBody.append(row); 
         }); 
         if (!dailyRank) dailyBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Henüz kayıt yok.</td></tr>'; 
 
-        // 2. Tüm Zamanlar Sıralama Sorgusu
         const totalSnap = await getDocs(query(collection(cloud, 'users'), orderBy('totalQuestions', 'desc'), limit(20))); 
-        totalBody.innerHTML = ''; 
-        let totalRank = 0; 
+        totalBody.innerHTML = ''; let totalRank = 0; 
         totalSnap.forEach((item) => { 
-          totalRank++; 
-          const data = item.data(); 
-          const row = document.createElement('tr'); 
-          row.className = 'border-t border-slate-100 dark:border-slate-800'; 
+          totalRank++; const data = item.data(); const row = document.createElement('tr'); row.className = 'border-t border-slate-100 dark:border-slate-800'; 
           row.innerHTML = `<td class="px-5 py-4 font-bold text-slate-400">${totalRank}</td><td class="px-5 py-4 font-semibold"></td><td class="px-5 py-4 text-right font-black text-violet-600 dark:text-violet-400">${data.totalQuestions || 0}</td>`; 
-          row.children[1].textContent = data.username || 'Öğrenci'; 
-          totalBody.append(row); 
+          row.children[1].textContent = data.username || 'Öğrenci'; totalBody.append(row); 
         }); 
         if (!totalRank) totalBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Henüz kayıt yok.</td></tr>'; 
-
-      } catch (error) { 
+      } catch { 
         dailyBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-rose-500">Sıralama yüklenemedi.</td></tr>'; 
         totalBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-rose-500">Sıralama yüklenemedi.</td></tr>'; 
       } 
@@ -271,8 +384,6 @@
 
     function chips() { return storage.get('sk-chips', defaultChips); }
     function renderChips() { $('#quick-chips').innerHTML = ''; chips().forEach((chip) => { const button = document.createElement('button'); button.className = 'rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-200'; button.textContent = `＋ ${chip}`; button.onclick = () => { const diary = $('#diary'); diary.value = `${diary.value.trim()}${diary.value.trim() ? ', ' : ''}${chip}`; analyzeDiary(); diary.focus(); }; $('#quick-chips').append(button); }); }
-    function analyzeDiary() { const text = $('#diary').value; localStorage.setItem('sk-diary', text); const summary = {}; let total = 0; const regex = /([a-zçğıöşü]+)\s*(?:den)?\s*(\d+)\s*soru/gi; let match; while ((match = regex.exec(text))) { const subject = match[1].charAt(0).toLocaleUpperCase('tr-TR') + match[1].slice(1).toLocaleLowerCase('tr-TR'); const amount = Number(match[2]); summary[subject] = (summary[subject] || 0) + amount; total += amount; } const tbody = $('#diary-table'); tbody.innerHTML = ''; const entries = Object.entries(summary); if (!entries.length) tbody.innerHTML = '<tr><td colspan="2" class="px-4 py-5 text-center text-slate-400">Soru sayıları burada görünecek.</td></tr>'; else { entries.forEach(([subject, amount]) => { const row = document.createElement('tr'); row.className = 'border-t border-slate-100 dark:border-slate-800'; row.innerHTML = `<td class="px-4 py-3"></td><td class="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">${amount}</td>`; row.children[0].textContent = subject; tbody.append(row); }); const row = document.createElement('tr'); row.className = 'border-t-2 border-indigo-100 dark:border-indigo-950 font-black'; row.innerHTML = `<td class="px-4 py-3">Toplam</td><td class="px-4 py-3 text-right text-indigo-600 dark:text-indigo-400">${total}</td>`; tbody.append(row); } const saved = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0), pending = Math.max(0, total - saved); $('#sync-status').textContent = pending ? `${pending} soru buluta kaydedilmeyi bekliyor.` : 'Buluta gönderilecek yeni soru yok.'; return total; }
-
     function populateSubjects(target, exam) { target.innerHTML = ''; subjects[exam].forEach((subject) => { const opt = document.createElement('option'); opt.value = subject; opt.textContent = subject; target.append(opt); }); }
     function fileAsDataUrl(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
     async function saveQuestion(event) { event.preventDefault(); const image = $('#question-image').files[0], solution = $('#solution-image').files[0]; if (!image || !solution) return; const item = { exam: $('#question-exam').value, subject: $('#question-subject').value, title: $('#question-title').value.trim(), image: await fileAsDataUrl(image), solution: await fileAsDataUrl(solution), createdAt: Date.now() }; await dbRequest('questions', 'readwrite', (store) => store.add(item)); event.target.reset(); populateSubjects($('#question-subject'), $('#question-exam').value); setPage('questions'); }
@@ -297,10 +408,21 @@
     document.querySelectorAll('[data-auth]').forEach((button) => button.addEventListener('click', () => { $('#login-form').classList.toggle('hidden', button.dataset.auth !== 'login'); $('#register-form').classList.toggle('hidden', button.dataset.auth !== 'register'); $('#auth-message').classList.add('hidden'); }));
     $('#login-form').addEventListener('submit', async (event) => { event.preventDefault(); try { await signInWithEmailAndPassword(auth, $('#login-email').value.trim(), $('#login-password').value); } catch (error) { showAuthMessage(friendlyError(error)); } });
     $('#register-form').addEventListener('submit', async (event) => { event.preventDefault(); try { const name = $('#register-name').value.trim(); const result = await createUserWithEmailAndPassword(auth, $('#register-email').value.trim(), $('#register-password').value); await updateProfile(result.user, { displayName: name }); await setDoc(doc(cloud, 'users', result.user.uid), { username: name, dailyQuestions: 0, totalQuestions: 0, dayKey: dayKey() }); } catch (error) { showAuthMessage(friendlyError(error)); } });
-    $('#logout-button').onclick = () => signOut(auth); $('#sync-button').onclick = syncQuestions; $('#diary').addEventListener('input', analyzeDiary); $('#clear-diary').onclick = () => { if (confirm('Günlük metni temizlensin mi?')) { $('#diary').value = ''; analyzeDiary(); } }; $('#calculate-net').onclick = calculateNet; $('#save-net').onclick = saveNet; document.querySelectorAll('[data-clear-nets]').forEach((button) => button.onclick = () => clearNets(button.dataset.clearNets)); $('#question-exam').onchange = () => populateSubjects($('#question-subject'), $('#question-exam').value); $('#filter-exam').onchange = () => { populateSubjects($('#filter-subject'), $('#filter-exam').value || 'TYT'); if (!$('#filter-exam').value) $('#filter-subject').innerHTML = '<option value="">Tüm dersler</option>'; loadQuestions(); }; $('#filter-subject').onchange = loadQuestions; $('#question-form').addEventListener('submit', saveQuestion); $('#stopwatch-toggle').onclick = toggleStopwatch; $('#stopwatch-save').onclick = resetStopwatch; $('#pomo-toggle').onclick = togglePomo; $('#pomo-reset').onclick = () => setPomo(state.pomo.mode === 'focus' ? 25 : 5, state.pomo.mode); document.querySelectorAll('[data-pomo]').forEach((button) => button.onclick = () => { const [minutes, mode] = button.dataset.pomo.split(','); setPomo(Number(minutes), mode); }); document.querySelectorAll('[data-timer-tab]').forEach((button) => button.onclick = () => switchTimer(button.dataset.timerTab)); $('#theme-toggle').onclick = toggleTheme; $('#save-chips').onclick = () => { const value = $('#chips-input').value.split(',').map((item) => item.trim()).filter(Boolean); storage.set('sk-chips', value.length ? value : defaultChips); renderChips(); };
+    $('#logout-button').onclick = () => signOut(auth); 
+    
+    // Çift Kaydet Butonu Desteği
+    document.querySelectorAll('#sync-button, #sync-button-diary').forEach(btn => btn.onclick = syncQuestions);
+    
+    $('#diary').addEventListener('input', analyzeDiary); 
+    $('#clear-diary').onclick = () => { if (confirm('Günlük metni temizlensin mi?')) { $('#diary').value = ''; analyzeDiary(); } }; 
+    $('#calculate-net').onclick = calculateNet; $('#save-net').onclick = saveNet; document.querySelectorAll('[data-clear-nets]').forEach((button) => button.onclick = () => clearNets(button.dataset.clearNets)); $('#question-exam').onchange = () => populateSubjects($('#question-subject'), $('#question-exam').value); $('#filter-exam').onchange = () => { populateSubjects($('#filter-subject'), $('#filter-exam').value || 'TYT'); if (!$('#filter-exam').value) $('#filter-subject').innerHTML = '<option value="">Tüm dersler</option>'; loadQuestions(); }; $('#filter-subject').onchange = loadQuestions; $('#question-form').addEventListener('submit', saveQuestion); $('#stopwatch-toggle').onclick = toggleStopwatch; $('#stopwatch-save').onclick = resetStopwatch; $('#pomo-toggle').onclick = togglePomo; $('#pomo-reset').onclick = () => setPomo(state.pomo.mode === 'focus' ? 25 : 5, state.pomo.mode); document.querySelectorAll('[data-pomo]').forEach((button) => button.onclick = () => { const [minutes, mode] = button.dataset.pomo.split(','); setPomo(Number(minutes), mode); }); document.querySelectorAll('[data-timer-tab]').forEach((button) => button.onclick = () => switchTimer(button.dataset.timerTab)); $('#theme-toggle').onclick = toggleTheme; $('#save-chips').onclick = () => { const value = $('#chips-input').value.split(',').map((item) => item.trim()).filter(Boolean); storage.set('sk-chips', value.length ? value : defaultChips); renderChips(); };
 
     const storedDiaryDay = localStorage.getItem('sk-diary-day');
-    if (storedDiaryDay && storedDiaryDay !== dayKey()) localStorage.removeItem('sk-diary');
+    if (storedDiaryDay && storedDiaryDay !== dayKey()) {
+      localStorage.removeItem('sk-diary');
+      localStorage.removeItem(`sk-diary-saved-${storedDiaryDay}`);
+      localStorage.removeItem(`sk-diary-time-saved-${storedDiaryDay}`);
+    }
     localStorage.setItem('sk-diary-day', dayKey());
     state.db = await openDatabase(); $('#diary').value = localStorage.getItem('sk-diary') || ''; $('#chips-input').value = chips().join(', '); populateSubjects($('#question-subject'), 'TYT'); renderChips(); analyzeDiary(); updateStopwatch(); updatePomo(); renderCharts();
     onAuthStateChanged(auth, async (user) => { if (!user) { window.location.replace('./index.html'); return; } state.user = user; try { await ensureCloudProfile(user); $('#auth-section').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#app').classList.add('flex'); setPage('dashboard'); } catch { alert('Profil yüklenemedi. Lütfen yeniden giriş yap.'); await signOut(auth); } });
