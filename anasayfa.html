@@ -344,4 +344,415 @@
       const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
       const value = Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
       const start = Date.UTC(Number(value.year), Number(value.month) - 1, Number(value.day));
-      return new Date(start - (Number(value.h
+      return new Date(start - (Number(value.hour) < 4 ? 86_400_000 : 0)).toISOString().slice(0, 10);
+    }
+    function formatTime(seconds) { const h = Math.floor(seconds / 3600), m = Math.floor(seconds % 3600 / 60), s = seconds % 60; return h ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; }
+    function totalFocusSeconds() { return Number(localStorage.getItem('sk-focus-seconds') || 0); }
+    function addFocus(seconds) { if (seconds > 0) localStorage.setItem('sk-focus-seconds', String(totalFocusSeconds() + seconds)); updateHeader(); }
+    function updateHeader() { const count = state.cloudData.dailyQuestions || 0; $('#header-questions').textContent = count; const sec = totalFocusSeconds() + state.stopwatch; const min = Math.floor(sec / 60); $('#header-time').textContent = min >= 60 ? `${Math.floor(min / 60)} sa ${min % 60} dk` : `${min} dk`; }
+    
+    function updateDiaryStats() {
+      if ($('#diary-stat-daily')) $('#diary-stat-daily').textContent = state.cloudData.dailyQuestions || 0;
+      if ($('#diary-stat-total')) $('#diary-stat-total').textContent = state.cloudData.totalQuestions || 0;
+    }
+
+    function setPage(page) { 
+      document.querySelectorAll('main > section').forEach((section) => section.classList.add('hidden')); 
+      const target = $(`#${page}-page`);
+      if (target) {
+        target.classList.remove('hidden');
+        if (page === 'questions') loadQuestions();
+        if (page === 'leaderboard') loadLeaderboard();
+        if (page === 'net') renderNetCharts();
+        if (page === 'dashboard' || page === 'diary') { 
+          renderCharts(); 
+          analyzeDiary(); 
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    function openDatabase() { return new Promise((resolve, reject) => { const req = indexedDB.open('SoruKutusuDB', 1); req.onupgradeneeded = () => { const db = req.result; if (!db.objectStoreNames.contains('questions')) db.createObjectStore('questions', { keyPath: 'id', autoIncrement: true }); if (!db.objectStoreNames.contains('nets')) db.createObjectStore('nets', { keyPath: 'id', autoIncrement: true }); }; req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); }
+    function dbRequest(store, mode, operation) { return new Promise((resolve, reject) => { const tx = state.db.transaction(store, mode), request = operation(tx.objectStore(store)); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
+
+    async function ensureCloudProfile(user) { 
+      const ref = doc(cloud, 'users', user.uid), snap = await getDoc(ref), name = user.displayName || user.email.split('@')[0]; 
+      let data = snap.exists() ? snap.data() : null; 
+      if (!data) { 
+        data = { username: name, dailyQuestions: 0, totalQuestions: 0, dayKey: dayKey() }; 
+        await setDoc(ref, data); 
+      } else {
+        let updates = {};
+        if (data.dayKey !== dayKey()) { 
+          updates.dailyQuestions = 0;
+          updates.dayKey = dayKey();
+          data.dailyQuestions = 0; 
+          data.dayKey = dayKey(); 
+        } 
+        if (data.totalQuestions === undefined) { updates.totalQuestions = 0; data.totalQuestions = 0; }
+        if (Object.keys(updates).length > 0) await updateDoc(ref, updates);
+      }
+      state.cloudData = data; 
+      $('#display-name').textContent = data.username || name; 
+      updateHeader();
+      updateDiaryStats();
+    }
+
+    // GÜNCELLENEN GÜNLÜK ANALİZ
+    function analyzeDiary() { 
+      const text = $('#diary').value; 
+      localStorage.setItem('sk-diary', text); 
+      const summary = {}; 
+      let totalQuestions = 0; 
+      const regex = /([a-zçğıöşü]+)\s*(?:den)?\s*(\d+)\s*soru/gi; 
+      let match; 
+      while ((match = regex.exec(text))) { 
+        const subject = match[1].charAt(0).toLocaleUpperCase('tr-TR') + match[1].slice(1).toLocaleLowerCase('tr-TR'); 
+        const amount = Number(match[2]); 
+        summary[subject] = (summary[subject] || 0) + amount; 
+        totalQuestions += amount; 
+      } 
+      let diaryHours = 0, diaryMinutes = 0;
+      const hourRegex = /(\d+)\s*(?:saat|sa\b)/gi;
+      let hourMatch;
+      while ((hourMatch = hourRegex.exec(text))) { diaryHours += Number(hourMatch[1]); }
+      const minRegex = /(\d+)\s*(?:dakika|dk\b)/gi;
+      let minMatch;
+      while ((minMatch = minRegex.exec(text))) { diaryMinutes += Number(minMatch[1]); }
+      const totalDiarySeconds = (diaryHours * 3600) + (diaryMinutes * 60);
+
+      const tbody = $('#diary-table'); 
+      tbody.innerHTML = ''; 
+      const entries = Object.entries(summary); 
+      if (!entries.length && totalDiarySeconds === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" class="px-4 py-5 text-center text-slate-400">Soru ve süre tespit edilemedi.</td></tr>'; 
+      } else { 
+        entries.forEach(([subject, amount]) => { 
+          const row = document.createElement('tr'); 
+          row.className = 'border-t border-slate-100 dark:border-slate-800'; 
+          row.innerHTML = `<td class="px-4 py-3"></td><td class="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">${amount}</td>`; 
+          row.children[0].textContent = subject; 
+          tbody.append(row); 
+        }); 
+        if (totalDiarySeconds > 0) {
+          const timeRow = document.createElement('tr');
+          timeRow.className = 'border-t border-slate-100 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-bold';
+          timeRow.innerHTML = `<td class="px-4 py-3">⏳ Çalışma Süresi</td><td class="px-4 py-3 text-right">${diaryHours > 0 ? diaryHours + ' sa ' : ''}${diaryMinutes} dk</td>`;
+          tbody.append(timeRow);
+        }
+        const row = document.createElement('tr'); 
+        row.className = 'border-t-2 border-indigo-100 dark:border-indigo-950 font-black'; 
+        row.innerHTML = `<td class="px-4 py-3">Toplam Soru</td><td class="px-4 py-3 text-right text-indigo-600 dark:text-indigo-400">${totalQuestions}</td>`; 
+        tbody.append(row); 
+      } 
+
+      const savedQuestions = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0); 
+      const pendingQuestions = Math.max(0, totalQuestions - savedQuestions); 
+      const savedTime = Number(localStorage.getItem(`sk-diary-time-saved-${dayKey()}`) || 0);
+      const pendingTime = Math.max(0, totalDiarySeconds - savedTime);
+      const statusMsg = (pendingQuestions || pendingTime) 
+        ? `${pendingQuestions} yeni soru ve ${Math.floor(pendingTime / 60)} dk buluta gönderilmeyi bekliyor.` 
+        : 'Buluta gönderilecek yeni veri yok.'; 
+      if ($('#sync-status')) $('#sync-status').textContent = statusMsg;
+      if ($('#sync-status-diary')) $('#sync-status-diary').textContent = statusMsg;
+      updateDiaryStats();
+      return { totalQuestions, totalDiarySeconds }; 
+    }
+
+    // GÜNCELLENEN BULUT KAYIT SİSTEMİ
+    async function syncQuestions() { 
+      if (!state.user) return; 
+      const { totalQuestions, totalDiarySeconds } = analyzeDiary(); 
+      const savedQuestions = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0); 
+      const pendingQuestions = Math.max(0, totalQuestions - savedQuestions); 
+      const savedTime = Number(localStorage.getItem(`sk-diary-time-saved-${dayKey()}`) || 0);
+      const pendingTime = Math.max(0, totalDiarySeconds - savedTime);
+      if (!pendingQuestions && !pendingTime) { 
+        const noDataMsg = 'Buluta gönderilecek yeni veri yok.';
+        if ($('#sync-status')) $('#sync-status').textContent = noDataMsg;
+        if ($('#sync-status-diary')) $('#sync-status-diary').textContent = noDataMsg;
+        return; 
+      } 
+      const syncButtons = document.querySelectorAll('#sync-button, #sync-button-diary');
+      syncButtons.forEach(btn => { btn.disabled = true; btn.textContent = 'Kaydediliyor…'; });
+      try { 
+        if (pendingQuestions > 0) {
+          await updateDoc(doc(cloud, 'users', state.user.uid), { 
+            dailyQuestions: increment(pendingQuestions), 
+            totalQuestions: increment(pendingQuestions),
+            dayKey: dayKey() 
+          }); 
+          state.cloudData.dailyQuestions = (state.cloudData.dailyQuestions || 0) + pendingQuestions; 
+          state.cloudData.totalQuestions = (state.cloudData.totalQuestions || 0) + pendingQuestions; 
+          localStorage.setItem(`sk-diary-saved-${dayKey()}`, String(totalQuestions)); 
+        }
+        if (pendingTime > 0) {
+          addFocus(pendingTime);
+          localStorage.setItem(`sk-diary-time-saved-${dayKey()}`, String(totalDiarySeconds));
+        }
+        updateHeader(); 
+        const successMsg = `Tebrikler! Verilerin başarıyla buluta işlendi. 🎉`;
+        if ($('#sync-status')) $('#sync-status').textContent = successMsg;
+        if ($('#sync-status-diary')) $('#sync-status-diary').textContent = successMsg;
+      } catch (error) { 
+        const failMsg = 'Bulut kaydı başarısız. Bağlantını kontrol edip tekrar dene.';
+        if ($('#sync-status')) $('#sync-status').textContent = failMsg;
+        if ($('#sync-status-diary')) $('#sync-status-diary').textContent = failMsg;
+      } finally { 
+        syncButtons.forEach(btn => { btn.disabled = false; btn.textContent = '☁️ Kaydet'; });
+        updateDiaryStats();
+      } 
+    }
+
+    // GÜNCELLENEN GÜNLÜK EKLEME FONKSİYONU
+    function addDiaryEntry() {
+      const subject = $('#diary-subject').value;
+      const count = $('#diary-question-count').value || 10;
+      const hours = Number($('#diary-hours').value) || 0;
+      const minutes = Number($('#diary-minutes').value) || 0;
+      
+      let entry = `${subject} ${count} soru`;
+      if (hours > 0 || minutes > 0) {
+        entry += `, ${hours > 0 ? hours + ' saat ' : ''}${minutes > 0 ? minutes + ' dakika' : ''}`;
+      }
+      
+      const diary = $('#diary');
+      const current = diary.value.trim();
+      diary.value = current ? `${current}\n${entry}` : entry;
+      analyzeDiary();
+      diary.focus();
+      diary.scrollTop = diary.scrollHeight;
+    }
+
+    async function loadLeaderboard() { 
+      const dailyBody = $('#leaderboard-list-daily'), totalBody = $('#leaderboard-list-total'); 
+      dailyBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Yükleniyor…</td></tr>'; 
+      totalBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Yükleniyor…</td></tr>'; 
+      try { 
+        const dailySnap = await getDocs(query(collection(cloud, 'users'), orderBy('dailyQuestions', 'desc'), limit(20))); 
+        dailyBody.innerHTML = ''; let dailyRank = 0; 
+        dailySnap.forEach((item) => { 
+          dailyRank++; const data = item.data(); const row = document.createElement('tr'); row.className = 'border-t border-slate-100 dark:border-slate-800'; 
+          row.innerHTML = `<td class="px-5 py-4 font-bold text-slate-400">${dailyRank}</td><td class="px-5 py-4 font-semibold"></td><td class="px-5 py-4 text-right font-black text-indigo-600 dark:text-indigo-400">${data.dailyQuestions || 0}</td>`; 
+          row.children[1].textContent = data.username || 'Öğrenci'; dailyBody.append(row); 
+        }); 
+        if (!dailyRank) dailyBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Henüz kayıt yok.</td></tr>'; 
+
+        const totalSnap = await getDocs(query(collection(cloud, 'users'), orderBy('totalQuestions', 'desc'), limit(20))); 
+        totalBody.innerHTML = ''; let totalRank = 0; 
+        totalSnap.forEach((item) => { 
+          totalRank++; const data = item.data(); const row = document.createElement('tr'); row.className = 'border-t border-slate-100 dark:border-slate-800'; 
+          row.innerHTML = `<td class="px-5 py-4 font-bold text-slate-400">${totalRank}</td><td class="px-5 py-4 font-semibold"></td><td class="px-5 py-4 text-right font-black text-violet-600 dark:text-violet-400">${data.totalQuestions || 0}</td>`; 
+          row.children[1].textContent = data.username || 'Öğrenci'; totalBody.append(row); 
+        }); 
+        if (!totalRank) totalBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Henüz kayıt yok.</td></tr>'; 
+      } catch { 
+        dailyBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-rose-500">Sıralama yüklenemedi.</td></tr>'; 
+        totalBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-rose-500">Sıralama yüklenemedi.</td></tr>'; 
+      } 
+    }
+
+    function chips() { return storage.get('sk-chips', defaultChips); }
+    function renderChips() { 
+      $('#quick-chips').innerHTML = ''; 
+      chips().forEach((chip) => { 
+        const button = document.createElement('button'); 
+        button.className = 'rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-200'; 
+        button.textContent = `＋ ${chip}`; 
+        button.onclick = () => {
+          // Hızlı ekleme butonları artık direkt form alanlarına yansıyor
+          const parts = chip.split(' ');
+          const subject = parts[0];
+          const count = parseInt(parts[1]) || 10;
+          $('#diary-subject').value = subject;
+          $('#diary-question-count').value = count;
+          // Otomatik ekle
+          addDiaryEntry();
+        }; 
+        $('#quick-chips').append(button); 
+      }); 
+    }
+    function populateSubjects(target, exam) { target.innerHTML = ''; subjects[exam].forEach((subject) => { const opt = document.createElement('option'); opt.value = subject; opt.textContent = subject; target.append(opt); }); }
+    function fileAsDataUrl(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
+    async function saveQuestion(event) { event.preventDefault(); const image = $('#question-image').files[0], solution = $('#solution-image').files[0]; if (!image || !solution) return; const item = { exam: $('#question-exam').value, subject: $('#question-subject').value, title: $('#question-title').value.trim(), image: await fileAsDataUrl(image), solution: await fileAsDataUrl(solution), createdAt: Date.now() }; await dbRequest('questions', 'readwrite', (store) => store.add(item)); event.target.reset(); populateSubjects($('#question-subject'), $('#question-exam').value); setPage('questions'); }
+    async function loadQuestions() { const list = $('#question-list'), records = await dbRequest('questions', 'readonly', (store) => store.getAll()), exam = $('#filter-exam').value, subject = $('#filter-subject').value; list.innerHTML = ''; const filtered = records.filter((item) => (!exam || item.exam === exam) && (!subject || item.subject === subject)).sort((a,b) => b.createdAt - a.createdAt); if (!filtered.length) { list.innerHTML = '<p class="rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500 dark:border-slate-700">Henüz bu filtrede soru yok.</p>'; return; } filtered.forEach((item) => { const card = document.createElement('article'); card.className = 'card overflow-hidden p-0'; const image = document.createElement('img'); image.src = item.image; image.alt = item.title; image.className = 'h-48 w-full bg-slate-100 object-contain dark:bg-slate-800'; const content = document.createElement('div'); content.className = 'p-4'; content.innerHTML = `<p class="text-xs font-bold text-indigo-600 dark:text-indigo-400">${item.exam} · ${item.subject}</p><h3 class="mt-1 font-bold"></h3><div class="mt-4 flex gap-2"><button class="secondary-btn view-solution">Çözümü gör</button><button class="danger-link delete-question">Sil</button></div>`; content.querySelector('h3').textContent = item.title; content.querySelector('.view-solution').onclick = () => { image.src = image.src === item.image ? item.solution : item.image; image.alt = image.src === item.solution ? `${item.title} çözümü` : item.title; content.querySelector('.view-solution').textContent = image.src === item.solution ? 'Soruyu gör' : 'Çözümü gör'; }; content.querySelector('.delete-question').onclick = async () => { if (confirm('Bu soru arşivden silinsin mi?')) { await dbRequest('questions', 'readwrite', (store) => store.delete(item.id)); loadQuestions(); } }; card.append(image, content); list.append(card); }); }
+
+    async function nets() { return dbRequest('nets', 'readonly', (store) => store.getAll()); }
+    async function renderCharts() { 
+      const records = await nets(); 
+      ['TYT', 'AYT'].forEach((exam) => { 
+        const data = records.filter((item) => item.exam === exam).sort((a,b) => a.createdAt - b.createdAt); 
+        const canvas = $(`#${exam.toLowerCase()}-chart`);
+        if (!canvas) return;
+        state.charts[`${exam}-dashboard`]?.destroy(); 
+        state.charts[`${exam}-dashboard`] = new Chart(canvas, { 
+          type: 'line', 
+          data: { 
+            labels: data.map((item) => item.label), 
+            datasets: [{ 
+              data: data.map((item) => item.value), 
+              borderColor: exam === 'TYT' ? '#4f46e5' : '#db2777', 
+              backgroundColor: exam === 'TYT' ? '#4f46e533' : '#db277733', 
+              fill: true, 
+              tension: .3 
+            }] 
+          }, 
+          options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { legend: { display: false } }, 
+            scales: { y: { beginAtZero: true } } 
+          } 
+        }); 
+      }); 
+    }
+
+    async function renderNetCharts() {
+      const records = await nets();
+      ['TYT', 'AYT'].forEach((exam) => {
+        const data = records.filter((item) => item.exam === exam).sort((a,b) => a.createdAt - b.createdAt);
+        const canvas = $(`#${exam.toLowerCase()}-net-chart`);
+        if (!canvas) return;
+        state.charts[`${exam}-net`]?.destroy();
+        state.charts[`${exam}-net`] = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels: data.map((item) => item.label || `Deneme ${data.indexOf(item) + 1}`),
+            datasets: [{
+              data: data.map((item) => item.value),
+              borderColor: exam === 'TYT' ? '#4f46e5' : '#db2777',
+              backgroundColor: exam === 'TYT' ? '#4f46e533' : '#db277733',
+              fill: true,
+              tension: .3,
+              pointBackgroundColor: exam === 'TYT' ? '#4f46e5' : '#db2777',
+              pointRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return `Net: ${context.parsed.y.toFixed(2)}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        });
+      });
+    }
+
+    function calculateNet() { 
+      const correct = Number($('#net-correct').value) || 0; 
+      const wrong = Number($('#net-wrong').value) || 0; 
+      state.calculatedNet = Math.max(0, correct - wrong / 4); 
+      $('#net-result').classList.remove('hidden'); 
+      $('#net-result-value').textContent = state.calculatedNet.toFixed(2).replace('.', ','); 
+      $('#save-net').classList.remove('hidden'); 
+    }
+    async function saveNet() { 
+      if (state.calculatedNet === null) return; 
+      const exam = $('#net-exam').value; 
+      const label = $('#net-label').value.trim() || new Date().toLocaleDateString('tr-TR'); 
+      await dbRequest('nets', 'readwrite', (store) => store.add({ exam, label, value: state.calculatedNet, createdAt: Date.now() })); 
+      $('#net-label').value = ''; 
+      $('#net-correct').value = ''; 
+      $('#net-wrong').value = ''; 
+      $('#net-result').classList.add('hidden'); 
+      $('#save-net').classList.add('hidden'); 
+      state.calculatedNet = null; 
+      renderCharts();
+      renderNetCharts();
+    }
+    async function clearNets(exam) { 
+      if (!confirm(`${exam} net grafiği silinsin mi?`)) return; 
+      const records = await nets(); 
+      await Promise.all(records.filter((item) => item.exam === exam).map((item) => dbRequest('nets', 'readwrite', (store) => store.delete(item.id)))); 
+      renderCharts();
+      renderNetCharts();
+    }
+
+    function updateStopwatch() { $('#stopwatch-display').textContent = formatTime(state.stopwatch); updateHeader(); }
+    function toggleStopwatch() { if (state.stopwatchId) { clearInterval(state.stopwatchId); state.stopwatchId = null; $('#stopwatch-toggle').textContent = '▶ Devam et'; } else { state.stopwatchId = setInterval(() => { state.stopwatch++; updateStopwatch(); }, 1000); $('#stopwatch-toggle').textContent = '⏸ Duraklat'; } }
+    function resetStopwatch() { if (state.stopwatchId) toggleStopwatch(); addFocus(state.stopwatch); state.stopwatch = 0; updateStopwatch(); $('#stopwatch-toggle').textContent = '▶ Başlat'; }
+    function updatePomo() { $('#pomo-display').textContent = formatTime(state.pomo.left); }
+    function setPomo(minutes, mode) { if (state.pomo.id) { clearInterval(state.pomo.id); state.pomo.id = null; } state.pomo = { left: minutes * 60, total: minutes * 60, mode, id: null }; $('#pomo-label').textContent = `${mode === 'focus' ? 'Odaklanma' : 'Mola'} · ${minutes} dk`; $('#pomo-toggle').textContent = '▶ Başlat'; updatePomo(); }
+    function togglePomo() { if (state.pomo.id) { clearInterval(state.pomo.id); state.pomo.id = null; $('#pomo-toggle').textContent = '▶ Devam et'; return; } state.pomo.id = setInterval(() => { state.pomo.left--; updatePomo(); if (state.pomo.left <= 0) { clearInterval(state.pomo.id); state.pomo.id = null; if (state.pomo.mode === 'focus') addFocus(state.pomo.total); alert(state.pomo.mode === 'focus' ? 'Odaklanma tamamlandı! 🎉' : 'Mola tamamlandı!'); setPomo(state.pomo.mode === 'focus' ? 5 : 25, state.pomo.mode === 'focus' ? 'break' : 'focus'); } }, 1000); $('#pomo-toggle').textContent = '⏸ Duraklat'; }
+    function switchTimer(tab) { document.querySelectorAll('.timer-tab').forEach((button) => button.classList.toggle('active', button.dataset.timerTab === tab)); $('#stopwatch-panel').classList.toggle('hidden', tab !== 'stopwatch'); $('#pomodoro-panel').classList.toggle('hidden', tab !== 'pomodoro'); }
+    function toggleTheme() { document.documentElement.classList.toggle('dark'); localStorage.setItem('soru-kutusu-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); }
+
+    document.querySelectorAll('[data-page]').forEach((button) => button.addEventListener('click', () => setPage(button.dataset.page)));
+    document.querySelectorAll('[data-auth]').forEach((button) => button.addEventListener('click', () => { $('#login-form').classList.toggle('hidden', button.dataset.auth !== 'login'); $('#register-form').classList.toggle('hidden', button.dataset.auth !== 'register'); $('#auth-message').classList.add('hidden'); }));
+    $('#login-form').addEventListener('submit', async (event) => { event.preventDefault(); try { await signInWithEmailAndPassword(auth, $('#login-email').value.trim(), $('#login-password').value); } catch (error) { showAuthMessage(friendlyError(error)); } });
+    $('#register-form').addEventListener('submit', async (event) => { event.preventDefault(); try { const name = $('#register-name').value.trim(); const result = await createUserWithEmailAndPassword(auth, $('#register-email').value.trim(), $('#register-password').value); await updateProfile(result.user, { displayName: name }); await setDoc(doc(cloud, 'users', result.user.uid), { username: name, dailyQuestions: 0, totalQuestions: 0, dayKey: dayKey() }); } catch (error) { showAuthMessage(friendlyError(error)); } });
+    $('#logout-button').onclick = () => signOut(auth); 
+    document.querySelectorAll('#sync-button, #sync-button-diary').forEach(btn => btn.onclick = syncQuestions);
+    $('#add-diary-entry').onclick = addDiaryEntry;
+    $('#diary').addEventListener('input', analyzeDiary); 
+    $('#clear-diary').onclick = () => { if (confirm('Günlük metni temizlensin mi?')) { $('#diary').value = ''; analyzeDiary(); } }; 
+    $('#calculate-net').onclick = calculateNet; 
+    $('#save-net').onclick = saveNet; 
+    document.querySelectorAll('[data-clear-nets]').forEach((button) => button.onclick = () => clearNets(button.dataset.clearNets)); 
+    $('#question-exam').onchange = () => populateSubjects($('#question-subject'), $('#question-exam').value); 
+    $('#filter-exam').onchange = () => { populateSubjects($('#filter-subject'), $('#filter-exam').value || 'TYT'); if (!$('#filter-exam').value) $('#filter-subject').innerHTML = '<option value="">Tüm dersler</option>'; loadQuestions(); }; 
+    $('#filter-subject').onchange = loadQuestions; 
+    $('#question-form').addEventListener('submit', saveQuestion); 
+    $('#stopwatch-toggle').onclick = toggleStopwatch; 
+    $('#stopwatch-save').onclick = resetStopwatch; 
+    $('#pomo-toggle').onclick = togglePomo; 
+    $('#pomo-reset').onclick = () => setPomo(state.pomo.mode === 'focus' ? 25 : 5, state.pomo.mode); 
+    document.querySelectorAll('[data-pomo]').forEach((button) => button.onclick = () => { const [minutes, mode] = button.dataset.pomo.split(','); setPomo(Number(minutes), mode); }); 
+    document.querySelectorAll('[data-timer-tab]').forEach((button) => button.onclick = () => switchTimer(button.dataset.timerTab)); 
+    $('#theme-toggle').onclick = toggleTheme; 
+    $('#save-chips').onclick = () => { const value = $('#chips-input').value.split(',').map((item) => item.trim()).filter(Boolean); storage.set('sk-chips', value.length ? value : defaultChips); renderChips(); };
+
+    const storedDiaryDay = localStorage.getItem('sk-diary-day');
+    if (storedDiaryDay && storedDiaryDay !== dayKey()) {
+      localStorage.removeItem('sk-diary');
+      localStorage.removeItem(`sk-diary-saved-${storedDiaryDay}`);
+      localStorage.removeItem(`sk-diary-time-saved-${storedDiaryDay}`);
+    }
+    localStorage.setItem('sk-diary-day', dayKey());
+    state.db = await openDatabase(); 
+    $('#diary').value = localStorage.getItem('sk-diary') || ''; 
+    $('#chips-input').value = chips().join(', '); 
+    populateSubjects($('#question-subject'), 'TYT'); 
+    renderChips(); 
+    analyzeDiary(); 
+    updateStopwatch(); 
+    updatePomo(); 
+    renderCharts();
+    renderNetCharts();
+    
+    onAuthStateChanged(auth, async (user) => { 
+      if (!user) { 
+        window.location.replace('./index.html'); 
+        return; 
+      } 
+      state.user = user; 
+      try { 
+        await ensureCloudProfile(user); 
+        $('#auth-section').classList.add('hidden'); 
+        $('#app').classList.remove('hidden'); 
+        $('#app').classList.add('flex'); 
+        setPage('dashboard'); 
+      } catch { 
+        alert('Profil yüklenemedi. Lütfen yeniden giriş yap.'); 
+        await signOut(auth); 
+      } 
+    });
+  </script>
+</body>
+</html>
