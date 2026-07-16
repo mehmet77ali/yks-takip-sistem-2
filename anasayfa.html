@@ -92,7 +92,43 @@
 
       <section id="add-question-page" class="hidden space-y-5"><div class="page-heading"><div><h2>Yeni soru ekle</h2><p>Soru ve çözüm fotoğrafı cihazında saklanır.</p></div><button data-page="questions" class="secondary-btn">← Arşive dön</button></div><form id="question-form" class="card mx-auto max-w-2xl space-y-4"><select id="question-exam" class="field"><option>TYT</option><option>AYT</option></select><select id="question-subject" class="field"></select><input id="question-title" required class="field" placeholder="Soru başlığı / konu" /><label class="block text-sm font-bold">Soru fotoğrafı<input id="question-image" required type="file" accept="image/*" class="mt-1 block w-full text-sm" /></label><label class="block text-sm font-bold">Çözüm fotoğrafı<input id="solution-image" required type="file" accept="image/*" class="mt-1 block w-full text-sm" /></label><button class="primary-btn w-full" type="submit">Kaydet ve arşive ekle</button></form></section>
 
-      <section id="leaderboard-page" class="hidden space-y-5"><div class="page-heading"><div><h2>🏆 Günlük sıralama</h2><p>Bugün buluta kaydedilen çözülen soru sayısı.</p></div><button data-page="dashboard" class="secondary-btn">← Ana sayfa</button></div><div class="card overflow-hidden p-0"><table class="w-full text-left"><thead class="bg-slate-100 text-xs uppercase text-slate-500 dark:bg-slate-800"><tr><th class="px-5 py-4">#</th><th class="px-5 py-4">Öğrenci</th><th class="px-5 py-4 text-right">Soru</th></tr></thead><tbody id="leaderboard-list"></tbody></table></div></section>
+      <section id="leaderboard-page" class="hidden space-y-5">
+        <div class="page-heading">
+          <div>
+            <h2>🏆 Liderlik Tablosu</h2>
+            <p>Çalışmalarını buluta kaydeden öğrencilerin sıralaması.</p>
+          </div>
+          <button data-page="dashboard" class="secondary-btn">← Ana sayfa</button>
+        </div>
+        
+        <div class="grid gap-6 md:grid-cols-2">
+          <div class="card overflow-hidden p-0">
+            <div class="p-4 bg-indigo-50 dark:bg-indigo-950/40 border-b border-slate-100 dark:border-slate-800">
+              <h3 class="font-bold text-indigo-600 dark:text-indigo-400">⚡ Bugün En Çok Çözenler</h3>
+              <p class="text-xs text-slate-500">Her sabah saat 04:00'te sıfırlanır.</p>
+            </div>
+            <table class="w-full text-left">
+              <thead class="bg-slate-100 text-xs uppercase text-slate-500 dark:bg-slate-800">
+                <tr><th class="px-5 py-4">#</th><th class="px-5 py-4">Öğrenci</th><th class="px-5 py-4 text-right">Soru</th></tr>
+              </thead>
+              <tbody id="leaderboard-list-daily"></tbody>
+            </table>
+          </div>
+
+          <div class="card overflow-hidden p-0">
+            <div class="p-4 bg-violet-50 dark:bg-violet-950/40 border-b border-slate-100 dark:border-slate-800">
+              <h3 class="font-bold text-violet-600 dark:text-violet-400">👑 Tüm Zamanların En İyileri</h3>
+              <p class="text-xs text-slate-500">Şu ana kadar çözülen toplam soru sayısı.</p>
+            </div>
+            <table class="w-full text-left">
+              <thead class="bg-slate-100 text-xs uppercase text-slate-500 dark:bg-slate-800">
+                <tr><th class="px-5 py-4">#</th><th class="px-5 py-4">Öğrenci</th><th class="px-5 py-4 text-right">Toplam Soru</th></tr>
+              </thead>
+              <tbody id="leaderboard-list-total"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       <section id="settings-page" class="hidden space-y-5"><div class="page-heading"><div><h2>Ayarlar</h2><p>Görünümü ve hızlı ekleme şablonlarını düzenle.</p></div><button data-page="dashboard" class="secondary-btn">← Ana sayfa</button></div><div class="grid gap-6 md:grid-cols-2"><section class="card"><h3 class="section-title">🎨 Görünüm</h3><button id="theme-toggle" class="secondary-btn mt-4">Temayı değiştir</button></section><section class="card"><h3 class="section-title">⚡ Hızlı ekleme</h3><p class="hint">Her şablonu “Ders 20 soru” biçiminde, virgülle ayır.</p><textarea id="chips-input" class="field mt-4 h-28"></textarea><button id="save-chips" class="primary-btn mt-3">Şablonları kaydet</button></section></div></section>
     </main>
@@ -111,7 +147,7 @@
     const app = initializeApp(firebaseConfig), auth = getAuth(app), cloud = getFirestore(app);
     const $ = (selector) => document.querySelector(selector);
     const subjects = { TYT: ['Matematik', 'Türkçe', 'Sosyal', 'Fen'], AYT: ['Matematik', 'Fizik', 'Kimya', 'Biyoloji'] };
-    const state = { db: null, user: null, cloudData: { dailyQuestions: 0 }, charts: {}, stopwatch: 0, stopwatchId: null, pomo: { left: 1500, total: 1500, mode: 'focus', id: null }, calculatedNet: null, diarySeconds: 0 };
+    const state = { db: null, user: null, cloudData: { dailyQuestions: 0, totalQuestions: 0 }, charts: {}, stopwatch: 0, stopwatchId: null, pomo: { left: 1500, total: 1500, mode: 'focus', id: null }, calculatedNet: null };
     const defaultChips = ['Matematik 10 soru', 'Türkçe 20 soru', 'Geometri 10 soru', 'Fizik 15 soru', 'Kimya 15 soru', 'Biyoloji 15 soru'];
     const storage = { get: (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }, set: (key, value) => localStorage.setItem(key, JSON.stringify(value)) };
 
@@ -127,72 +163,115 @@
     function formatTime(seconds) { const h = Math.floor(seconds / 3600), m = Math.floor(seconds % 3600 / 60), s = seconds % 60; return h ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; }
     function totalFocusSeconds() { return Number(localStorage.getItem('sk-focus-seconds') || 0); }
     function addFocus(seconds) { if (seconds > 0) localStorage.setItem('sk-focus-seconds', String(totalFocusSeconds() + seconds)); updateHeader(); }
-    
-    function updateHeader() { 
-      const count = state.cloudData.dailyQuestions || 0; 
-      $('#header-questions').textContent = count; 
-      const sec = totalFocusSeconds() + state.stopwatch + (state.diarySeconds || 0); 
-      const min = Math.floor(sec / 60); 
-      $('#header-time').textContent = min >= 60 ? `${Math.floor(min / 60)} sa ${min % 60} dk` : `${min} dk`; 
-    }
-    
+    function updateHeader() { const count = state.cloudData.dailyQuestions || 0; $('#header-questions').textContent = count; const sec = totalFocusSeconds() + state.stopwatch; const min = Math.floor(sec / 60); $('#header-time').textContent = min >= 60 ? `${Math.floor(min / 60)} sa ${min % 60} dk` : `${min} dk`; }
     function setPage(page) { document.querySelectorAll('main > section').forEach((section) => section.classList.add('hidden')); $(`#${page}-page`).classList.remove('hidden'); if (page === 'questions') loadQuestions(); if (page === 'leaderboard') loadLeaderboard(); if (page === 'dashboard') { renderCharts(); analyzeDiary(); } window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
     function openDatabase() { return new Promise((resolve, reject) => { const req = indexedDB.open('SoruKutusuDB', 1); req.onupgradeneeded = () => { const db = req.result; if (!db.objectStoreNames.contains('questions')) db.createObjectStore('questions', { keyPath: 'id', autoIncrement: true }); if (!db.objectStoreNames.contains('nets')) db.createObjectStore('nets', { keyPath: 'id', autoIncrement: true }); }; req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); }
     function dbRequest(store, mode, operation) { return new Promise((resolve, reject) => { const tx = state.db.transaction(store, mode), request = operation(tx.objectStore(store)); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
 
-    async function ensureCloudProfile(user) { const ref = doc(cloud, 'users', user.uid), snap = await getDoc(ref), name = user.displayName || user.email.split('@')[0]; let data = snap.exists() ? snap.data() : null; if (!data) { data = { username: name, dailyQuestions: 0, dayKey: dayKey() }; await setDoc(ref, data); } else if (data.dayKey !== dayKey()) { await updateDoc(ref, { dailyQuestions: 0, dayKey: dayKey() }); data.dailyQuestions = 0; data.dayKey = dayKey(); } state.cloudData = data; $('#display-name').textContent = data.username || name; updateHeader(); }
-    async function syncQuestions() { if (!state.user) return; const total = analyzeDiary(); const saved = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0); const pending = Math.max(0, total - saved); if (!pending) { $('#sync-status').textContent = 'Buluta gönderilecek yeni soru yok.'; return; } $('#sync-button').disabled = true; $('#sync-button').textContent = 'Kaydediliyor…'; try { await updateDoc(doc(cloud, 'users', state.user.uid), { dailyQuestions: increment(pending), dayKey: dayKey() }); state.cloudData.dailyQuestions = (state.cloudData.dailyQuestions || 0) + pending; localStorage.setItem(`sk-diary-saved-${dayKey()}`, String(total)); updateHeader(); $('#sync-status').textContent = `${pending} yeni soru buluta kaydedildi. 🎉`; } catch (error) { $('#sync-status').textContent = 'Bulut kaydı başarısız. Bağlantını kontrol edip tekrar dene.'; } finally { $('#sync-button').disabled = false; $('#sync-button').textContent = '☁️ Kaydet'; } }
-    async function loadLeaderboard() { const body = $('#leaderboard-list'); body.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Yükleniyor…</td></tr>'; try { const snap = await getDocs(query(collection(cloud, 'users'), orderBy('dailyQuestions', 'desc'), limit(20))); body.innerHTML = ''; let rank = 0; snap.forEach((item) => { rank++; const data = item.data(); const row = document.createElement('tr'); row.className = 'border-t border-slate-100 dark:border-slate-800'; row.innerHTML = `<td class="px-5 py-4 font-bold text-slate-400">${rank}</td><td class="px-5 py-4 font-semibold"></td><td class="px-5 py-4 text-right font-black text-indigo-600 dark:text-indigo-400">${data.dailyQuestions || 0}</td>`; row.children[1].textContent = data.username || 'Öğrenci'; body.append(row); }); if (!rank) body.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Henüz kayıt yok.</td></tr>'; } catch { body.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-rose-500">Sıralama yüklenemedi.</td></tr>'; } }
+    // GÜNCELLENEN BULUT PROFİL KONTROLÜ (totalQuestions eklendi)
+    async function ensureCloudProfile(user) { 
+      const ref = doc(cloud, 'users', user.uid), snap = await getDoc(ref), name = user.displayName || user.email.split('@')[0]; 
+      let data = snap.exists() ? snap.data() : null; 
+      if (!data) { 
+        data = { username: name, dailyQuestions: 0, totalQuestions: 0, dayKey: dayKey() }; 
+        await setDoc(ref, data); 
+      } else {
+        let updates = {};
+        if (data.dayKey !== dayKey()) { 
+          updates.dailyQuestions = 0;
+          updates.dayKey = dayKey();
+          data.dailyQuestions = 0; 
+          data.dayKey = dayKey(); 
+        } 
+        if (data.totalQuestions === undefined) {
+          updates.totalQuestions = 0;
+          data.totalQuestions = 0;
+        }
+        if (Object.keys(updates).length > 0) {
+          await updateDoc(ref, updates);
+        }
+      }
+      state.cloudData = data; 
+      $('#display-name').textContent = data.username || name; 
+      updateHeader(); 
+    }
+
+    // GÜNCELLENEN BULUT SENKRONİZASYONU (totalQuestions increment ediliyor)
+    async function syncQuestions() { 
+      if (!state.user) return; 
+      const total = analyzeDiary(); 
+      const saved = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0); 
+      const pending = Math.max(0, total - saved); 
+      if (!pending) { $('#sync-status').textContent = 'Buluta gönderilecek yeni soru yok.'; return; } 
+      $('#sync-button').disabled = true; 
+      $('#sync-button').textContent = 'Kaydediliyor…'; 
+      try { 
+        await updateDoc(doc(cloud, 'users', state.user.uid), { 
+          dailyQuestions: increment(pending), 
+          totalQuestions: increment(pending),
+          dayKey: dayKey() 
+        }); 
+        state.cloudData.dailyQuestions = (state.cloudData.dailyQuestions || 0) + pending; 
+        state.cloudData.totalQuestions = (state.cloudData.totalQuestions || 0) + pending; 
+        localStorage.setItem(`sk-diary-saved-${dayKey()}`, String(total)); 
+        updateHeader(); 
+        $('#sync-status').textContent = `${pending} yeni soru buluta kaydedildi. 🎉`; 
+      } catch (error) { 
+        $('#sync-status').textContent = 'Bulut kaydı başarısız. Bağlantını kontrol edip tekrar dene.'; 
+      } finally { 
+        $('#sync-button').disabled = false; 
+        $('#sync-button').textContent = '☁️ Kaydet'; 
+      } 
+    }
+
+    // GÜNCELLENEN ÇİFT LİSTELİ LİDERLİK TABLOSU YÜKLEMESİ
+    async function loadLeaderboard() { 
+      const dailyBody = $('#leaderboard-list-daily'); 
+      const totalBody = $('#leaderboard-list-total'); 
+      dailyBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Yükleniyor…</td></tr>'; 
+      totalBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Yükleniyor…</td></tr>'; 
+      
+      try { 
+        // 1. Günlük Sıralama Sorgusu
+        const dailySnap = await getDocs(query(collection(cloud, 'users'), orderBy('dailyQuestions', 'desc'), limit(20))); 
+        dailyBody.innerHTML = ''; 
+        let dailyRank = 0; 
+        dailySnap.forEach((item) => { 
+          dailyRank++; 
+          const data = item.data(); 
+          const row = document.createElement('tr'); 
+          row.className = 'border-t border-slate-100 dark:border-slate-800'; 
+          row.innerHTML = `<td class="px-5 py-4 font-bold text-slate-400">${dailyRank}</td><td class="px-5 py-4 font-semibold"></td><td class="px-5 py-4 text-right font-black text-indigo-600 dark:text-indigo-400">${data.dailyQuestions || 0}</td>`; 
+          row.children[1].textContent = data.username || 'Öğrenci'; 
+          dailyBody.append(row); 
+        }); 
+        if (!dailyRank) dailyBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Henüz kayıt yok.</td></tr>'; 
+
+        // 2. Tüm Zamanlar Sıralama Sorgusu
+        const totalSnap = await getDocs(query(collection(cloud, 'users'), orderBy('totalQuestions', 'desc'), limit(20))); 
+        totalBody.innerHTML = ''; 
+        let totalRank = 0; 
+        totalSnap.forEach((item) => { 
+          totalRank++; 
+          const data = item.data(); 
+          const row = document.createElement('tr'); 
+          row.className = 'border-t border-slate-100 dark:border-slate-800'; 
+          row.innerHTML = `<td class="px-5 py-4 font-bold text-slate-400">${totalRank}</td><td class="px-5 py-4 font-semibold"></td><td class="px-5 py-4 text-right font-black text-violet-600 dark:text-violet-400">${data.totalQuestions || 0}</td>`; 
+          row.children[1].textContent = data.username || 'Öğrenci'; 
+          totalBody.append(row); 
+        }); 
+        if (!totalRank) totalBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-slate-500">Henüz kayıt yok.</td></tr>'; 
+
+      } catch (error) { 
+        dailyBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-rose-500">Sıralama yüklenemedi.</td></tr>'; 
+        totalBody.innerHTML = '<tr><td colspan="3" class="px-5 py-6 text-center text-rose-500">Sıralama yüklenemedi.</td></tr>'; 
+      } 
+    }
 
     function chips() { return storage.get('sk-chips', defaultChips); }
     function renderChips() { $('#quick-chips').innerHTML = ''; chips().forEach((chip) => { const button = document.createElement('button'); button.className = 'rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-200'; button.textContent = `＋ ${chip}`; button.onclick = () => { const diary = $('#diary'); diary.value = `${diary.value.trim()}${diary.value.trim() ? ', ' : ''}${chip}`; analyzeDiary(); diary.focus(); }; $('#quick-chips').append(button); }); }
-    
-    function analyzeDiary() { 
-      const text = $('#diary').value; 
-      localStorage.setItem('sk-diary', text); 
-      const summary = {}; 
-      let total = 0; 
-      const regex = /([a-zçğıöşü]+)\s*(?:den)?\s*(\d+)\s*soru/gi; 
-      let match; 
-      while ((match = regex.exec(text))) { 
-        const subject = match[1].charAt(0).toLocaleUpperCase('tr-TR') + match[1].slice(1).toLocaleLowerCase('tr-TR'); 
-        const amount = Number(match[2]); 
-        summary[subject] = (summary[subject] || 0) + amount; 
-        total += amount; 
-      } 
-      
-      let diarySeconds = 0; 
-      const hourRegex = /(\d+)\s*(?:saat|sa\b)/gi; 
-      let hourMatch; 
-      while ((hourMatch = hourRegex.exec(text))) { diarySeconds += Number(hourMatch[1]) * 3600; } 
-      const minRegex = /(\d+)\s*(?:dakika|dk\b)/gi; 
-      let minMatch; 
-      while ((minMatch = minRegex.exec(text))) { diarySeconds += Number(minMatch[1]) * 60; } 
-      state.diarySeconds = diarySeconds; 
-
-      const tbody = $('#diary-table'); 
-      tbody.innerHTML = ''; 
-      const entries = Object.entries(summary); 
-      if (!entries.length) tbody.innerHTML = '<tr><td colspan="2" class="px-4 py-5 text-center text-slate-400">Soru sayıları burada görünecek.</td></tr>'; 
-      else { 
-        entries.forEach(([subject, amount]) => { 
-          const row = document.createElement('tr'); 
-          row.className = 'border-t border-slate-100 dark:border-slate-800'; 
-          row.innerHTML = `<td class="px-4 py-3"></td><td class="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">${amount}</td>`; 
-          row.children[0].textContent = subject; 
-          tbody.append(row); 
-        }); 
-        const row = document.createElement('tr'); 
-        row.className = 'border-t-2 border-indigo-100 dark:border-indigo-950 font-black'; 
-        row.innerHTML = `<td class="px-4 py-3">Toplam</td><td class="px-4 py-3 text-right text-indigo-600 dark:text-indigo-400">${total}</td>`; 
-        tbody.append(row); 
-      } 
-      const saved = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0), pending = Math.max(0, total - saved); 
-      $('#sync-status').textContent = pending ? `${pending} soru buluta kaydedilmeyi bekliyor.` : 'Buluta gönderilecek yeni soru yok.'; 
-      updateHeader(); 
-      return total; 
-    }
+    function analyzeDiary() { const text = $('#diary').value; localStorage.setItem('sk-diary', text); const summary = {}; let total = 0; const regex = /([a-zçğıöşü]+)\s*(?:den)?\s*(\d+)\s*soru/gi; let match; while ((match = regex.exec(text))) { const subject = match[1].charAt(0).toLocaleUpperCase('tr-TR') + match[1].slice(1).toLocaleLowerCase('tr-TR'); const amount = Number(match[2]); summary[subject] = (summary[subject] || 0) + amount; total += amount; } const tbody = $('#diary-table'); tbody.innerHTML = ''; const entries = Object.entries(summary); if (!entries.length) tbody.innerHTML = '<tr><td colspan="2" class="px-4 py-5 text-center text-slate-400">Soru sayıları burada görünecek.</td></tr>'; else { entries.forEach(([subject, amount]) => { const row = document.createElement('tr'); row.className = 'border-t border-slate-100 dark:border-slate-800'; row.innerHTML = `<td class="px-4 py-3"></td><td class="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">${amount}</td>`; row.children[0].textContent = subject; tbody.append(row); }); const row = document.createElement('tr'); row.className = 'border-t-2 border-indigo-100 dark:border-indigo-950 font-black'; row.innerHTML = `<td class="px-4 py-3">Toplam</td><td class="px-4 py-3 text-right text-indigo-600 dark:text-indigo-400">${total}</td>`; tbody.append(row); } const saved = Number(localStorage.getItem(`sk-diary-saved-${dayKey()}`) || 0), pending = Math.max(0, total - saved); $('#sync-status').textContent = pending ? `${pending} soru buluta kaydedilmeyi bekliyor.` : 'Buluta gönderilecek yeni soru yok.'; return total; }
 
     function populateSubjects(target, exam) { target.innerHTML = ''; subjects[exam].forEach((subject) => { const opt = document.createElement('option'); opt.value = subject; opt.textContent = subject; target.append(opt); }); }
     function fileAsDataUrl(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
@@ -217,7 +296,7 @@
     document.querySelectorAll('[data-page]').forEach((button) => button.addEventListener('click', () => setPage(button.dataset.page)));
     document.querySelectorAll('[data-auth]').forEach((button) => button.addEventListener('click', () => { $('#login-form').classList.toggle('hidden', button.dataset.auth !== 'login'); $('#register-form').classList.toggle('hidden', button.dataset.auth !== 'register'); $('#auth-message').classList.add('hidden'); }));
     $('#login-form').addEventListener('submit', async (event) => { event.preventDefault(); try { await signInWithEmailAndPassword(auth, $('#login-email').value.trim(), $('#login-password').value); } catch (error) { showAuthMessage(friendlyError(error)); } });
-    $('#register-form').addEventListener('submit', async (event) => { event.preventDefault(); try { const name = $('#register-name').value.trim(); const result = await createUserWithEmailAndPassword(auth, $('#register-email').value.trim(), $('#register-password').value); await updateProfile(result.user, { displayName: name }); await setDoc(doc(cloud, 'users', result.user.uid), { username: name, dailyQuestions: 0, dayKey: dayKey() }); } catch (error) { showAuthMessage(friendlyError(error)); } });
+    $('#register-form').addEventListener('submit', async (event) => { event.preventDefault(); try { const name = $('#register-name').value.trim(); const result = await createUserWithEmailAndPassword(auth, $('#register-email').value.trim(), $('#register-password').value); await updateProfile(result.user, { displayName: name }); await setDoc(doc(cloud, 'users', result.user.uid), { username: name, dailyQuestions: 0, totalQuestions: 0, dayKey: dayKey() }); } catch (error) { showAuthMessage(friendlyError(error)); } });
     $('#logout-button').onclick = () => signOut(auth); $('#sync-button').onclick = syncQuestions; $('#diary').addEventListener('input', analyzeDiary); $('#clear-diary').onclick = () => { if (confirm('Günlük metni temizlensin mi?')) { $('#diary').value = ''; analyzeDiary(); } }; $('#calculate-net').onclick = calculateNet; $('#save-net').onclick = saveNet; document.querySelectorAll('[data-clear-nets]').forEach((button) => button.onclick = () => clearNets(button.dataset.clearNets)); $('#question-exam').onchange = () => populateSubjects($('#question-subject'), $('#question-exam').value); $('#filter-exam').onchange = () => { populateSubjects($('#filter-subject'), $('#filter-exam').value || 'TYT'); if (!$('#filter-exam').value) $('#filter-subject').innerHTML = '<option value="">Tüm dersler</option>'; loadQuestions(); }; $('#filter-subject').onchange = loadQuestions; $('#question-form').addEventListener('submit', saveQuestion); $('#stopwatch-toggle').onclick = toggleStopwatch; $('#stopwatch-save').onclick = resetStopwatch; $('#pomo-toggle').onclick = togglePomo; $('#pomo-reset').onclick = () => setPomo(state.pomo.mode === 'focus' ? 25 : 5, state.pomo.mode); document.querySelectorAll('[data-pomo]').forEach((button) => button.onclick = () => { const [minutes, mode] = button.dataset.pomo.split(','); setPomo(Number(minutes), mode); }); document.querySelectorAll('[data-timer-tab]').forEach((button) => button.onclick = () => switchTimer(button.dataset.timerTab)); $('#theme-toggle').onclick = toggleTheme; $('#save-chips').onclick = () => { const value = $('#chips-input').value.split(',').map((item) => item.trim()).filter(Boolean); storage.set('sk-chips', value.length ? value : defaultChips); renderChips(); };
 
     const storedDiaryDay = localStorage.getItem('sk-diary-day');
@@ -227,4 +306,4 @@
     onAuthStateChanged(auth, async (user) => { if (!user) { window.location.replace('./index.html'); return; } state.user = user; try { await ensureCloudProfile(user); $('#auth-section').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#app').classList.add('flex'); setPage('dashboard'); } catch { alert('Profil yüklenemedi. Lütfen yeniden giriş yap.'); await signOut(auth); } });
   </script>
 </body>
-</html> 
+</html>
